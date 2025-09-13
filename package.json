@@ -1,0 +1,33 @@
+{
+  "name": "react-native-simple-sound-player",
+  "version": "1.0.0",
+  "description": "A simple React Native sound player without external dependencies",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react-native",
+    "sound",
+    "audio",
+    "player",
+    "native",
+    "ios",
+    "android"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/react-native-simple-sound-player.git"
+  },
+  "peerDependencies": {
+    "react-native": ">=0.60.0"
+  },
+  "files": [
+    "android/",
+    "ios/",
+    "index.js",
+    "README.md"
+  ]
+}
