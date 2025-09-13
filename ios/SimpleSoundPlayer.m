@@ -45,6 +45,7 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
         
         audioPlayer.volume = normalizedVolume;
         audioPlayer.numberOfLoops = 0;
+        audioPlayer.delegate = self; // Delegate'i ayarla
         
         // Audio session'ı aktif et
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
@@ -99,9 +100,23 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
             });
         });
         
-        // Audio player'ı completion'da release et
-        audioPlayer.delegate = nil;
+        // Audio player'ı completion'da release et - ama hemen değil!
+        // Ses bitene kadar bekleyelim
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((audioPlayer.duration + 1.0) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            audioPlayer.delegate = nil;
+        });
     });
+}
+
+// AVAudioPlayerDelegate methodları
+- (void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag {
+    NSLog(@"Audio player finished playing: %@", flag ? @"Successfully" : @"With error");
+    player.delegate = nil;
+}
+
+- (void)audioPlayerDecodeErrorDidOccur:(AVAudioPlayer *)player error:(NSError *)error {
+    NSLog(@"Audio player decode error: %@", error.localizedDescription);
+    player.delegate = nil;
 }
 
 @end
