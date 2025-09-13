@@ -36,21 +36,32 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void playSoundWithVolume(String fileName, float volume, Promise promise) {
         try {
-            Context context = getReactApplicationContext();
-            int resourceId = context.getResources().getIdentifier(
-                fileName.replace(".mp3", "").replace(".wav", "").replace(".ogg", ""),
-                "raw",
-                context.getPackageName()
-            );
-
-            if (resourceId == 0) {
-                promise.reject("FILE_NOT_FOUND", "Sound file '" + fileName + "' not found in raw resources");
-                return;
-            }
-
             MediaPlayer mediaPlayer = new MediaPlayer();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setDataSource(context.getResources().openRawResourceFd(resourceId));
+            
+            // Check if fileName is a URL (starts with http:// or https://)
+            if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
+                // Remote URL
+                mediaPlayer.setDataSource(fileName);
+                Log.d("SimpleSoundPlayer", "Playing remote audio from URL: " + fileName);
+            } else {
+                // Local file from raw resources
+                Context context = getReactApplicationContext();
+                int resourceId = context.getResources().getIdentifier(
+                    fileName.replace(".mp3", "").replace(".wav", "").replace(".ogg", ""),
+                    "raw",
+                    context.getPackageName()
+                );
+
+                if (resourceId == 0) {
+                    promise.reject("FILE_NOT_FOUND", "Sound file '" + fileName + "' not found in raw resources");
+                    return;
+                }
+                
+                mediaPlayer.setDataSource(context.getResources().openRawResourceFd(resourceId));
+                Log.d("SimpleSoundPlayer", "Playing local audio file: " + fileName);
+            }
+            
             mediaPlayer.setVolume(volume, volume);
             mediaPlayer.prepare();
             mediaPlayer.start();

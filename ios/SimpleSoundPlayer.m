@@ -20,15 +20,39 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSURL *soundURL = [[NSBundle mainBundle] URLForResource:fileName withExtension:nil];
+        NSURL *soundURL;
+        
+        // Check if fileName is a URL (starts with http:// or https://)
+        if ([fileName hasPrefix:@"http://"] || [fileName hasPrefix:@"https://"]) {
+            soundURL = [NSURL URLWithString:fileName];
+            NSLog(@"Playing remote audio from URL: %@", fileName);
+        } else {
+            // Local file from bundle
+            soundURL = [[NSBundle mainBundle] URLForResource:fileName withExtension:nil];
+            NSLog(@"Playing local audio file: %@", fileName);
+        }
         
         if (!soundURL) {
-            reject(@"FILE_NOT_FOUND", [NSString stringWithFormat:@"Sound file '%@' not found in bundle", fileName], nil);
+            reject(@"FILE_NOT_FOUND", [NSString stringWithFormat:@"Sound file '%@' not found", fileName], nil);
             return;
         }
         
         NSError *error;
-        AVAudioPlayer *audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:&error];
+        AVAudioPlayer *audioPlayer;
+        
+        // Check if it's a remote URL
+        if ([fileName hasPrefix:@"http://"] || [fileName hasPrefix:@"https://"]) {
+            // For remote URLs, we need to download the file first
+            NSData *audioData = [NSData dataWithContentsOfURL:soundURL];
+            if (!audioData) {
+                reject(@"DOWNLOAD_ERROR", [NSString stringWithFormat:@"Failed to download audio from URL: %@", fileName], nil);
+                return;
+            }
+            audioPlayer = [[AVAudioPlayer alloc] initWithData:audioData error:&error];
+        } else {
+            // For local files
+            audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:&error];
+        }
         
         if (error) {
             reject(@"PLAYBACK_ERROR", [NSString stringWithFormat:@"Error creating audio player: %@", error.localizedDescription], error);
@@ -71,6 +95,7 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
         NSNumber *volume = @(audioPlayer.volume);
         NSNumber *duration = @(audioPlayer.duration);
         NSNumber *isPlayingBefore = @(audioPlayer.isPlaying);
+        NSString *sourceType = ([fileName hasPrefix:@"http://"] || [fileName hasPrefix:@"https://"]) ? @"Remote URL" : @"Local File";
         
         BOOL success = [audioPlayer play];
         NSNumber *isPlayingAfter = @(audioPlayer.isPlaying);
@@ -88,7 +113,8 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
                 @"isPlayingAfter": isPlayingAfter,
                 @"isPlayingDelayed": isPlayingDelayed,
                 @"playResult": @(success),
-                @"sessionError": sessionError ? sessionError.localizedDescription : @"None"
+                @"sessionError": sessionError ? sessionError.localizedDescription : @"None",
+                @"sourceType": sourceType
             };
             
             resolve(@{

@@ -33,11 +33,15 @@ No additional setup required. The module will automatically link when you build 
 ```javascript
 import SimpleSoundPlayer from '@sekizlipenguen/react-native-simple-sound-player';
 
-// Play sound with default volume (0.5)
+// Play local sound file
 SimpleSoundPlayer.playSound('notification.mp3');
 
-// Play sound with custom volume (0.0 - 1.0)
+// Play sound with custom volume
 SimpleSoundPlayer.playSoundWithVolume('music.mp3', 0.8);
+
+// Play remote sound from URL
+SimpleSoundPlayer.playSound('https://example.com/sound.mp3');
+SimpleSoundPlayer.playSoundWithVolume('https://example.com/music.mp3', 0.5);
 ```
 
 ### Complete Example
@@ -107,7 +111,7 @@ export default App;
 Plays a sound file with default volume (0.5).
 
 **Parameters:**
-- `fileName` (string): Name of the sound file
+- `fileName` (string): Name of the sound file or URL (supports both local files and remote URLs)
 
 **Returns:** Promise with success status
 
@@ -115,10 +119,14 @@ Plays a sound file with default volume (0.5).
 Plays a sound file with custom volume.
 
 **Parameters:**
-- `fileName` (string): Name of the sound file
+- `fileName` (string): Name of the sound file or URL (supports both local files and remote URLs)
 - `volume` (number): Volume level (0.0 - 1.0)
 
 **Returns:** Promise with success status
+
+### Supported Sources
+- **Local files**: `notification.mp3`, `music.wav`
+- **Remote URLs**: `https://example.com/sound.mp3`, `http://example.com/music.wav`
 
 ---
 
