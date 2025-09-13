@@ -111,11 +111,109 @@ export default App;
 ## File Locations
 
 ### iOS
-Add your sound files to your iOS project bundle. The library will automatically find and play them.
+
+#### Method 1: Using Xcode (Recommended)
+
+1. **Open your iOS project in Xcode**
+2. **Right-click on your project** in the Project Navigator
+3. **Select "Add Files to [YourProjectName]"**
+4. **Navigate to your sound files** and select them
+5. **Make sure "Add to target" is checked** for your main app target
+6. **Click "Add"**
+
+#### Method 2: Drag and Drop
+
+1. **Open your iOS project in Xcode**
+2. **Drag your sound files** from Finder directly into the Project Navigator
+3. **In the dialog that appears:**
+   - ✅ Check "Copy items if needed"
+   - ✅ Check "Add to target" for your main app target
+   - ✅ Select "Create groups" (not "Create folder references")
+4. **Click "Finish"**
+
+#### Method 3: Using React Native CLI
+
+```bash
+# Create assets directory if it doesn't exist
+mkdir -p ios/YourProjectName/Sounds
+
+# Copy your sound files
+cp your-sound.mp3 ios/YourProjectName/Sounds/
+cp notification.wav ios/YourProjectName/Sounds/
+```
+
+Then add them to Xcode using Method 1 or 2 above.
+
+#### Important Notes for iOS:
+
+- **File names**: Use simple names without spaces (e.g., `sound.mp3`, `notification.wav`)
+- **Supported formats**: MP3, WAV, AAC, M4A, CAF
+- **File size**: Keep files under 5MB for better performance
+- **Bundle inclusion**: Files must be added to the app bundle, not just the project folder
 
 ### Android
-1. Create `android/app/src/main/res/raw/` directory
-2. Add your sound files to the `raw` folder
+
+#### Method 1: Using Android Studio (Recommended)
+
+1. **Open your Android project in Android Studio**
+2. **Navigate to `app/src/main/res/`**
+3. **Right-click on `res` folder** and select "New" → "Android Resource Directory"
+4. **Select "raw"** as the resource type
+5. **Click "OK"** to create the `raw` folder
+6. **Copy your sound files** into the `raw` folder
+
+#### Method 2: Using File Explorer
+
+1. **Navigate to your project folder**
+2. **Go to `android/app/src/main/res/`**
+3. **Create a folder named `raw`** if it doesn't exist
+4. **Copy your sound files** into the `raw` folder
+
+#### Method 3: Using Command Line
+
+```bash
+# Create raw directory if it doesn't exist
+mkdir -p android/app/src/main/res/raw
+
+# Copy your sound files
+cp your-sound.mp3 android/app/src/main/res/raw/
+cp notification.wav android/app/src/main/res/raw/
+```
+
+#### Important Notes for Android:
+
+- **File names**: Use lowercase letters, numbers, and underscores only (e.g., `sound.mp3`, `notification_sound.wav`)
+- **No spaces**: File names cannot contain spaces or special characters
+- **Supported formats**: MP3, WAV, OGG, AAC
+- **File size**: Keep files under 5MB for better performance
+- **Resource naming**: Android requires specific naming conventions for resources
+
+---
+
+## Project Structure Example
+
+After adding sound files, your project structure should look like this:
+
+```
+YourReactNativeProject/
+├── android/
+│   └── app/
+│       └── src/
+│           └── main/
+│               └── res/
+│                   └── raw/
+│                       ├── notification.mp3
+│                       ├── button_click.wav
+│                       └── background_music.ogg
+├── ios/
+│   └── YourProjectName/
+│       ├── notification.mp3
+│       ├── button_click.wav
+│       └── background_music.ogg
+└── src/
+    └── components/
+        └── SoundButton.js
+```
 
 ---
 
