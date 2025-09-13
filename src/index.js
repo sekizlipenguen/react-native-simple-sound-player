@@ -18,7 +18,13 @@ export function playSoundWithVolume(fileName, volume) {
   return SimpleSoundPlayer.playSoundWithVolume(fileName, volume);
 }
 
+// Volume ve cache ile ses çalma fonksiyonunu dışa aktar
+export function playSoundWithVolumeAndCache(fileName, volume, cacheDurationSeconds) {
+  return SimpleSoundPlayer.playSoundWithVolumeAndCache(fileName, volume, cacheDurationSeconds);
+}
+
 export default {
   playSound,
   playSoundWithVolume,
+  playSoundWithVolumeAndCache,
 };

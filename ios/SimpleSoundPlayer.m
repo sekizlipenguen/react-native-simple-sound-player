@@ -10,14 +10,34 @@ RCT_EXPORT_METHOD(playSound:(NSString *)fileName
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    [self playSoundWithVolume:fileName volume:0.5 resolver:resolve rejecter:reject];
+    [self playSoundWithVolume:fileName volume:0.5 cacheDuration:3600 resolver:resolve rejecter:reject];
 }
 
-// Ses çalma fonksiyonu (özel volume ile)
+// Ses çalma fonksiyonu (volume ile)
 RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
                   volume:(float)volume
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
+{
+    [self playSoundWithVolume:fileName volume:volume cacheDuration:3600 resolver:resolve rejecter:reject];
+}
+
+// Ses çalma fonksiyonu (volume ve cache ile)
+RCT_EXPORT_METHOD(playSoundWithVolumeAndCache:(NSString *)fileName
+                  volume:(float)volume
+                  cacheDuration:(NSInteger)cacheDurationSeconds
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    [self playSoundWithVolume:fileName volume:volume cacheDuration:cacheDurationSeconds resolver:resolve rejecter:reject];
+}
+
+// Ana ses çalma fonksiyonu (internal)
+- (void)playSoundWithVolume:(NSString *)fileName
+                     volume:(float)volume
+              cacheDuration:(NSInteger)cacheDurationSeconds
+                   resolver:(RCTPromiseResolveBlock)resolve
+                   rejecter:(RCTPromiseRejectBlock)reject
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSURL *soundURL;
@@ -42,12 +62,24 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
         
         // Check if it's a remote URL
         if ([fileName hasPrefix:@"http://"] || [fileName hasPrefix:@"https://"]) {
-            // For remote URLs, we need to download the file first
-            NSData *audioData = [NSData dataWithContentsOfURL:soundURL];
+            // For remote URLs, check cache first
+            NSData *audioData = [self getCachedAudioData:fileName cacheDuration:cacheDurationSeconds];
+            
             if (!audioData) {
-                reject(@"DOWNLOAD_ERROR", [NSString stringWithFormat:@"Failed to download audio from URL: %@", fileName], nil);
-                return;
+                // Download and cache the file
+                NSLog(@"Downloading audio from URL: %@", fileName);
+                audioData = [NSData dataWithContentsOfURL:soundURL];
+                if (!audioData) {
+                    reject(@"DOWNLOAD_ERROR", [NSString stringWithFormat:@"Failed to download audio from URL: %@", fileName], nil);
+                    return;
+                }
+                // Cache the downloaded data
+                [self cacheAudioData:audioData forURL:fileName];
+                NSLog(@"Audio cached for URL: %@", fileName);
+            } else {
+                NSLog(@"Using cached audio for URL: %@", fileName);
             }
+            
             audioPlayer = [[AVAudioPlayer alloc] initWithData:audioData error:&error];
         } else {
             // For local files
@@ -143,6 +175,53 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
 - (void)audioPlayerDecodeErrorDidOccur:(AVAudioPlayer *)player error:(NSError *)error {
     NSLog(@"Audio player decode error: %@", error.localizedDescription);
     player.delegate = nil;
+}
+
+// Cache fonksiyonları
+- (NSData *)getCachedAudioData:(NSString *)url cacheDuration:(NSInteger)cacheDurationSeconds {
+    NSString *cacheKey = [self getCacheKeyForURL:url];
+    NSString *cachePath = [self getCachePathForKey:cacheKey];
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath:cachePath]) {
+        NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:cachePath error:nil];
+        NSDate *fileDate = [attributes objectForKey:NSFileModificationDate];
+        NSTimeInterval timeSinceModified = [[NSDate date] timeIntervalSinceDate:fileDate];
+        
+        if (timeSinceModified < cacheDurationSeconds) {
+            // Cache is still valid
+            return [NSData dataWithContentsOfFile:cachePath];
+        } else {
+            // Cache expired, remove it
+            [[NSFileManager defaultManager] removeItemAtPath:cachePath error:nil];
+            NSLog(@"Cache expired for URL: %@", url);
+        }
+    }
+    
+    return nil;
+}
+
+- (void)cacheAudioData:(NSData *)audioData forURL:(NSString *)url {
+    NSString *cacheKey = [self getCacheKeyForURL:url];
+    NSString *cachePath = [self getCachePathForKey:cacheKey];
+    
+    // Create cache directory if it doesn't exist
+    NSString *cacheDir = [cachePath stringByDeletingLastPathComponent];
+    [[NSFileManager defaultManager] createDirectoryAtPath:cacheDir withIntermediateDirectories:YES attributes:nil error:nil];
+    
+    // Write data to cache
+    [audioData writeToFile:cachePath atomically:YES];
+}
+
+- (NSString *)getCacheKeyForURL:(NSString *)url {
+    // Create a hash of the URL for the cache key
+    NSUInteger hash = [url hash];
+    return [NSString stringWithFormat:@"audio_%lu", (unsigned long)hash];
+}
+
+- (NSString *)getCachePathForKey:(NSString *)cacheKey {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString *cacheDir = [paths objectAtIndex:0];
+    return [cacheDir stringByAppendingPathComponent:[NSString stringWithFormat:@"SimpleSoundPlayer/%@.mp3", cacheKey]];
 }
 
 @end

@@ -2,7 +2,7 @@ package com.sekizlipenguen.simplesoundplayer;
 
 import android.content.Context;
 import android.media.MediaPlayer;
-import android.media.AudioManager;
+import android.media.AudioAttributes;
 import android.util.Log;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -13,6 +13,13 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
 
 import java.io.IOException;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
     public static final String NAME = "SimpleSoundPlayer";
@@ -35,15 +42,45 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void playSoundWithVolume(String fileName, float volume, Promise promise) {
+        playSoundWithVolumeInternal(fileName, volume, 3600, promise);
+    }
+
+    @ReactMethod
+    public void playSoundWithVolumeAndCache(String fileName, float volume, int cacheDurationSeconds, Promise promise) {
+        playSoundWithVolumeInternal(fileName, volume, cacheDurationSeconds, promise);
+    }
+
+    private void playSoundWithVolumeInternal(String fileName, float volume, int cacheDurationSeconds, Promise promise) {
         try {
             MediaPlayer mediaPlayer = new MediaPlayer();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            // Modern AudioAttributes kullan (deprecated API yerine)
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+            mediaPlayer.setAudioAttributes(audioAttributes);
             
             // Check if fileName is a URL (starts with http:// or https://)
             if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
-                // Remote URL
-                mediaPlayer.setDataSource(fileName);
-                Log.d("SimpleSoundPlayer", "Playing remote audio from URL: " + fileName);
+                // Remote URL - check cache first
+                String cachedFilePath = getCachedFilePath(fileName, cacheDurationSeconds);
+                
+                if (cachedFilePath != null) {
+                    // Use cached file
+                    mediaPlayer.setDataSource(cachedFilePath);
+                    Log.d("SimpleSoundPlayer", "Playing cached audio from: " + cachedFilePath);
+                } else {
+                    // Download and cache the file
+                    Log.d("SimpleSoundPlayer", "Downloading audio from URL: " + fileName);
+                    String downloadedFilePath = downloadAndCacheFile(fileName);
+                    if (downloadedFilePath != null) {
+                        mediaPlayer.setDataSource(downloadedFilePath);
+                        Log.d("SimpleSoundPlayer", "Playing downloaded audio from: " + downloadedFilePath);
+                    } else {
+                        promise.reject("DOWNLOAD_ERROR", "Failed to download audio from URL: " + fileName);
+                        return;
+                    }
+                }
             } else {
                 // Local file from raw resources
                 Context context = getReactApplicationContext();
@@ -93,5 +130,92 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             promise.reject("PLAYBACK_ERROR", "Unexpected error: " + e.getMessage(), e);
         }
+    }
+
+    // Cache fonksiyonları
+    private String getCachedFilePath(String url, int cacheDurationSeconds) {
+        try {
+            String cacheKey = getCacheKey(url);
+            File cacheDir = getCacheDirectory();
+            File cachedFile = new File(cacheDir, cacheKey + ".mp3");
+            
+            if (cachedFile.exists()) {
+                long fileAge = System.currentTimeMillis() - cachedFile.lastModified();
+                long cacheDurationMs = cacheDurationSeconds * 1000L;
+                
+                if (fileAge < cacheDurationMs) {
+                    // Cache is still valid
+                    return cachedFile.getAbsolutePath();
+                } else {
+                    // Cache expired, remove it
+                    cachedFile.delete();
+                    Log.d("SimpleSoundPlayer", "Cache expired for URL: " + url);
+                }
+            }
+        } catch (Exception e) {
+            Log.e("SimpleSoundPlayer", "Error checking cache: " + e.getMessage());
+        }
+        
+        return null;
+    }
+
+    private String downloadAndCacheFile(String url) {
+        try {
+            String cacheKey = getCacheKey(url);
+            File cacheDir = getCacheDirectory();
+            File cachedFile = new File(cacheDir, cacheKey + ".mp3");
+            
+            // Create cache directory if it doesn't exist
+            if (!cacheDir.exists()) {
+                cacheDir.mkdirs();
+            }
+            
+            // Download file
+            URL downloadUrl = new URL(url);
+            HttpURLConnection connection = (HttpURLConnection) downloadUrl.openConnection();
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
+            
+            InputStream inputStream = connection.getInputStream();
+            FileOutputStream outputStream = new FileOutputStream(cachedFile);
+            
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            
+            inputStream.close();
+            outputStream.close();
+            connection.disconnect();
+            
+            Log.d("SimpleSoundPlayer", "File cached: " + cachedFile.getAbsolutePath());
+            return cachedFile.getAbsolutePath();
+            
+        } catch (Exception e) {
+            Log.e("SimpleSoundPlayer", "Error downloading file: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private String getCacheKey(String url) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(url.getBytes());
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return "audio_" + sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return "audio_" + String.valueOf(url.hashCode());
+        }
+    }
+
+    private File getCacheDirectory() {
+        Context context = getReactApplicationContext();
+        File cacheDir = new File(context.getCacheDir(), "SimpleSoundPlayer");
+        return cacheDir;
     }
 }
