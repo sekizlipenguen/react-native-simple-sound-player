@@ -112,37 +112,51 @@ export default App;
 
 ### iOS
 
-#### Method 1: Using Xcode (Recommended)
+#### Adding Sound Files to Xcode Project
 
 1. **Open your iOS project in Xcode**
-2. **Right-click on your project** in the Project Navigator
-3. **Select "Add Files to [YourProjectName]"**
+2. **In the Project Navigator (left sidebar), click on your project name** (the top-level folder with your project name - see image below)
+3. **Right-click on your project name** and select **"Add Files to [YourProjectName]"**
 4. **Navigate to your sound files** and select them
-5. **Make sure "Add to target" is checked** for your main app target
+5. **In the dialog that appears:**
+   - ✅ Check **"Copy items if needed"**
+   - ✅ Check **"Add to target"** for your main app target
+   - ✅ Select **"Create groups"** (not "Create folder references")
 6. **Click "Add"**
 
-#### Method 2: Drag and Drop
+**Important**: Always click on the **project name** (top-level folder) in the Project Navigator, not on subfolders!
 
-1. **Open your iOS project in Xcode**
-2. **Drag your sound files** from Finder directly into the Project Navigator
-3. **In the dialog that appears:**
-   - ✅ Check "Copy items if needed"
-   - ✅ Check "Add to target" for your main app target
-   - ✅ Select "Create groups" (not "Create folder references")
-4. **Click "Finish"**
-
-#### Method 3: Using React Native CLI
-
-```bash
-# Create assets directory if it doesn't exist
-mkdir -p ios/YourProjectName/Sounds
-
-# Copy your sound files
-cp your-sound.mp3 ios/YourProjectName/Sounds/
-cp notification.wav ios/YourProjectName/Sounds/
+**Visual Guide**: In the Project Navigator, you should see something like this:
+```
+📁 MyReactNativeApp              ← Click HERE (project name)
+  📁 MyReactNativeApp            ← Don't click here (subfolder)
+  📁 Libraries
+  📁 MyReactNativeAppTests
+  📁 Products
+  📁 Frameworks
+  📁 Pods
+  📁 Resources
 ```
 
-Then add them to Xcode using Method 1 or 2 above.
+Click on the **top-level project name** (MyReactNativeApp in this example), then right-click and select "Add Files to [YourProjectName]".
+
+#### Folder Structure Options
+
+You can organize your sound files in any way you prefer:
+
+```
+ios/YourProjectName/
+├── Sounds/                    # ✅ Custom folder (recommended)
+│   ├── notifications/
+│   ├── music/
+│   └── effects/
+├── Audio/                     # ✅ Alternative custom folder
+├── Assets/Sounds/             # ✅ Nested structure
+├── Resources/                 # ✅ Another option
+└── sound.mp3                  # ✅ Or directly in project root
+```
+
+**Important**: The folder name doesn't matter - what matters is that files are added to the Xcode project bundle!
 
 #### Important Notes for iOS:
 
@@ -201,19 +215,26 @@ YourReactNativeProject/
 │       └── src/
 │           └── main/
 │               └── res/
-│                   └── raw/
+│                   └── raw/                    # Android: Fixed location
 │                       ├── notification.mp3
 │                       ├── button_click.wav
 │                       └── background_music.ogg
 ├── ios/
 │   └── YourProjectName/
-│       ├── notification.mp3
-│       ├── button_click.wav
-│       └── background_music.ogg
+│       ├── Sounds/                             # iOS: Custom folder (optional)
+│       │   ├── notification.mp3
+│       │   ├── button_click.wav
+│       │   └── background_music.ogg
+│       └── Audio/                              # iOS: Alternative folder
+│           └── ambient_sound.mp3
 └── src/
     └── components/
         └── SoundButton.js
 ```
+
+**Note**: 
+- **Android**: Must use `res/raw/` folder (fixed by Android system)
+- **iOS**: Can use any folder structure you prefer (flexible)
 
 ---
 

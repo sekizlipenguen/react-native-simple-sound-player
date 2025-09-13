@@ -1,12 +1,9 @@
 #import "SimpleSoundPlayer.h"
-#import <React/RCTBridge.h>
 
 @implementation SimpleSoundPlayer
 
 // React Native modülünün tanımlaması
 RCT_EXPORT_MODULE();
-
-@synthesize bridge = _bridge;
 
 // Ses çalma fonksiyonu (varsayılan volume ile)
 RCT_EXPORT_METHOD(playSound:(NSString *)fileName
@@ -38,16 +35,72 @@ RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
             return;
         }
         
-        audioPlayer.volume = volume;
+        // Volume'u 0.0-1.0 arasında sınırla (iOS için)
+        float normalizedVolume = volume;
+        if (normalizedVolume > 1.0) {
+            normalizedVolume = 1.0;
+        } else if (normalizedVolume < 0.0) {
+            normalizedVolume = 0.0;
+        }
+        
+        audioPlayer.volume = normalizedVolume;
         audioPlayer.numberOfLoops = 0;
         
-        BOOL success = [audioPlayer play];
+        // Audio session'ı aktif et
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        NSError *sessionError;
         
-        if (success) {
-            resolve(@{@"success": @YES, @"fileName": fileName, @"volume": @(volume)});
-        } else {
-            reject(@"PLAYBACK_ERROR", @"Failed to play sound", nil);
-        }
+        // Önce session'ı deaktif et
+        [audioSession setActive:NO error:&sessionError];
+        
+        // Kategoriyi ayarla
+        [audioSession setCategory:AVAudioSessionCategoryPlayback 
+                      withOptions:AVAudioSessionCategoryOptionDefaultToSpeaker 
+                            error:&sessionError];
+        
+        // Session'ı aktif et
+        [audioSession setActive:YES error:&sessionError];
+        
+        NSLog(@"Audio session error: %@", sessionError ? sessionError.localizedDescription : @"None");
+        
+        // Prepare to play
+        BOOL prepared = [audioPlayer prepareToPlay];
+        
+        // Debug bilgileri
+        NSNumber *volume = @(audioPlayer.volume);
+        NSNumber *duration = @(audioPlayer.duration);
+        NSNumber *isPlayingBefore = @(audioPlayer.isPlaying);
+        
+        BOOL success = [audioPlayer play];
+        NSNumber *isPlayingAfter = @(audioPlayer.isPlaying);
+        
+        // Kısa bir gecikme ile tekrar kontrol et
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            NSNumber *isPlayingDelayed = @(audioPlayer.isPlaying);
+            
+            // Debug bilgilerini JavaScript'e gönder
+            NSDictionary *debugInfo = @{
+                @"prepared": @(prepared),
+                @"volume": volume,
+                @"duration": duration,
+                @"isPlayingBefore": isPlayingBefore,
+                @"isPlayingAfter": isPlayingAfter,
+                @"isPlayingDelayed": isPlayingDelayed,
+                @"playResult": @(success),
+                @"sessionError": sessionError ? sessionError.localizedDescription : @"None"
+            };
+            
+            resolve(@{
+                @"success": @YES, 
+                @"fileName": fileName, 
+                @"volume": @(normalizedVolume), 
+                @"prepared": @(prepared),
+                @"debug": debugInfo
+            });
+        });
+        
+        // Audio player'ı completion'da release et
+        audioPlayer.delegate = nil;
     });
 }
 
