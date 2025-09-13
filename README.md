@@ -10,21 +10,13 @@ A lightweight React Native module for playing MP3 and other audio files without 
 
 ## Installation
 
-Using npm:
-
 ```bash
 npm install @sekizlipenguen/react-native-simple-sound-player
 ```
 
-Using yarn:
-
-```bash
-yarn add @sekizlipenguen/react-native-simple-sound-player
-```
-
 ### iOS Setup
 
-After installing the package, make sure to run the following command to link the native iOS module:
+After installing, run:
 
 ```bash
 npx pod-install
@@ -32,44 +24,23 @@ npx pod-install
 
 ### Android Setup
 
-No additional setup is required for Android. The module will automatically link when you build your app.
-
----
-
-## Compatibility
-
-- **React Native**: `>=0.60`
-- **iOS**: Supported
-- **Android**: Supported
-- **JavaScript and TypeScript**: Fully supported
+No additional setup required. The module will automatically link when you build your app.
 
 ---
 
 ## Usage
 
-### Import the Module
-
 ```javascript
 import SimpleSoundPlayer from '@sekizlipenguen/react-native-simple-sound-player';
+
+// Play sound with default volume (0.5)
+SimpleSoundPlayer.playSound('notification.mp3');
+
+// Play sound with custom volume (0.0 - 1.0)
+SimpleSoundPlayer.playSoundWithVolume('music.mp3', 0.8);
 ```
 
-### Play Sound with Default Volume
-
-Call the `playSound` method to play a sound file with default volume (0.5):
-
-```javascript
-SimpleSoundPlayer.playSound('my-sound.mp3');
-```
-
-### Play Sound with Custom Volume
-
-Call the `playSoundWithVolume` method to play a sound file with custom volume:
-
-```javascript
-SimpleSoundPlayer.playSoundWithVolume('my-sound.mp3', 0.3);
-```
-
-#### Example:
+### Complete Example
 
 ```javascript
 import React from 'react';
@@ -86,20 +57,10 @@ const App = () => {
     }
   };
 
-  const handlePlaySoundWithVolume = async () => {
-    try {
-      const result = await SimpleSoundPlayer.playSoundWithVolume('music.mp3', 0.7);
-      console.log('Sound played with volume:', result);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to play sound: ' + error.message);
-    }
-  };
-
   return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Button title="Play Notification Sound" onPress={handlePlaySound}/>
-        <Button title="Play Music with Volume" onPress={handlePlaySoundWithVolume}/>
-      </View>
+    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+      <Button title="Play Sound" onPress={handlePlaySound}/>
+    </View>
   );
 };
 
@@ -108,156 +69,35 @@ export default App;
 
 ---
 
-## File Locations
+## Adding Sound Files
 
 ### iOS
-
-#### Adding Sound Files to Xcode Project
 
 1. **Open your iOS project in Xcode**
-2. **In the Project Navigator (left sidebar), click on your project name** (the top-level folder with your project name - see image below)
-3. **Right-click on your project name** and select **"Add Files to [YourProjectName]"**
-4. **Navigate to your sound files** and select them
-5. **In the dialog that appears:**
-   - ✅ Check **"Copy items if needed"**
-   - ✅ Check **"Add to target"** for your main app target
-   - ✅ Select **"Create groups"** (not "Create folder references")
-6. **Click "Add"**
+2. **Click on your project name** in the Project Navigator (top-level folder)
+3. **Right-click** and select **"Add Files to [YourProjectName]"**
+4. **Select your sound files** and click "Add"
+5. **Make sure "Add to target" is checked** for your main app target
 
-**Important**: Always click on the **project name** (top-level folder) in the Project Navigator, not on subfolders!
-
-**Visual Guide**: In the Project Navigator, you should see something like this:
-```
-📁 MyReactNativeApp              ← Click HERE (project name)
-  📁 MyReactNativeApp            ← Don't click here (subfolder)
-  📁 Libraries
-  📁 MyReactNativeAppTests
-  📁 Products
-  📁 Frameworks
-  📁 Pods
-  📁 Resources
-```
-
-Click on the **top-level project name** (MyReactNativeApp in this example), then right-click and select "Add Files to [YourProjectName]".
-
-#### Folder Structure Options
-
-You can organize your sound files in any way you prefer:
-
-```
-ios/YourProjectName/
-├── Sounds/                    # ✅ Custom folder (recommended)
-│   ├── notifications/
-│   ├── music/
-│   └── effects/
-├── Audio/                     # ✅ Alternative custom folder
-├── Assets/Sounds/             # ✅ Nested structure
-├── Resources/                 # ✅ Another option
-└── sound.mp3                  # ✅ Or directly in project root
-```
-
-**Important**: The folder name doesn't matter - what matters is that files are added to the Xcode project bundle!
-
-#### Important Notes for iOS:
-
-- **File names**: Use simple names without spaces (e.g., `sound.mp3`, `notification.wav`)
-- **Supported formats**: MP3, WAV, AAC, M4A, CAF
-- **File size**: Keep files under 5MB for better performance
-- **Bundle inclusion**: Files must be added to the app bundle, not just the project folder
+**Important**: Click on the **project name** (top-level folder), not subfolders!
 
 ### Android
 
-#### Method 1: Using Android Studio (Recommended)
-
-1. **Open your Android project in Android Studio**
-2. **Navigate to `app/src/main/res/`**
-3. **Right-click on `res` folder** and select "New" → "Android Resource Directory"
-4. **Select "raw"** as the resource type
-5. **Click "OK"** to create the `raw` folder
-6. **Copy your sound files** into the `raw` folder
-
-#### Method 2: Using File Explorer
-
-1. **Navigate to your project folder**
-2. **Go to `android/app/src/main/res/`**
-3. **Create a folder named `raw`** if it doesn't exist
-4. **Copy your sound files** into the `raw` folder
-
-#### Method 3: Using Command Line
-
-```bash
-# Create raw directory if it doesn't exist
-mkdir -p android/app/src/main/res/raw
-
-# Copy your sound files
-cp your-sound.mp3 android/app/src/main/res/raw/
-cp notification.wav android/app/src/main/res/raw/
-```
-
-#### Important Notes for Android:
-
-- **File names**: Use lowercase letters, numbers, and underscores only (e.g., `sound.mp3`, `notification_sound.wav`)
-- **No spaces**: File names cannot contain spaces or special characters
-- **Supported formats**: MP3, WAV, OGG, AAC
-- **File size**: Keep files under 5MB for better performance
-- **Resource naming**: Android requires specific naming conventions for resources
+1. **Navigate to** `android/app/src/main/res/`
+2. **Create a folder named** `raw` if it doesn't exist
+3. **Copy your sound files** into the `raw` folder
 
 ---
 
-## Project Structure Example
+## File Requirements
 
-After adding sound files, your project structure should look like this:
+### File Names
+- **iOS**: Simple names without spaces (e.g., `sound.mp3`, `notification.wav`)
+- **Android**: Lowercase letters, numbers, and underscores only (e.g., `sound.mp3`, `notification_sound.wav`)
 
-```
-YourReactNativeProject/
-├── android/
-│   └── app/
-│       └── src/
-│           └── main/
-│               └── res/
-│                   └── raw/                    # Android: Fixed location
-│                       ├── notification.mp3
-│                       ├── button_click.wav
-│                       └── background_music.ogg
-├── ios/
-│   └── YourProjectName/
-│       ├── Sounds/                             # iOS: Custom folder (optional)
-│       │   ├── notification.mp3
-│       │   ├── button_click.wav
-│       │   └── background_music.ogg
-│       └── Audio/                              # iOS: Alternative folder
-│           └── ambient_sound.mp3
-└── src/
-    └── components/
-        └── SoundButton.js
-```
-
-**Note**: 
-- **Android**: Must use `res/raw/` folder (fixed by Android system)
-- **iOS**: Can use any folder structure you prefer (flexible)
-
----
-
-## Supported Formats
-
-- **MP3**: Full support
-- **WAV**: Full support  
-- **OGG**: Full support
-- **Other formats**: Supported by native players
-
----
-
-## Platform-Specific Details
-
-### Android
-- Uses `MediaPlayer` for audio playback
-- Supports volume control (0.0 - 1.0)
-- Automatically releases resources after playback
-
-### iOS
-- Uses `AVAudioPlayer` for audio playback
-- Supports volume control (0.0 - 1.0)
-- Runs on main queue for smooth performance
+### Supported Formats
+- **MP3, WAV, OGG, AAC** - Full support
+- **File size**: Keep under 5MB for better performance
 
 ---
 
@@ -279,6 +119,15 @@ Plays a sound file with custom volume.
 - `volume` (number): Volume level (0.0 - 1.0)
 
 **Returns:** Promise with success status
+
+---
+
+## Compatibility
+
+- **React Native**: `>=0.60`
+- **iOS**: Supported
+- **Android**: Supported
+- **JavaScript and TypeScript**: Fully supported
 
 ---
 
