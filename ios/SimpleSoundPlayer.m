@@ -1,56 +1,54 @@
 #import "SimpleSoundPlayer.h"
-#import <AVFoundation/AVFoundation.h>
+#import <React/RCTBridge.h>
 
-@implementation SimpleSoundPlayer {
-  AVAudioPlayer *_audioPlayer;
-}
+@implementation SimpleSoundPlayer
 
+// React Native modülünün tanımlaması
 RCT_EXPORT_MODULE();
 
-RCT_EXPORT_METHOD(playSound:(NSString *)soundFileName)
+@synthesize bridge = _bridge;
+
+// Ses çalma fonksiyonu (varsayılan volume ile)
+RCT_EXPORT_METHOD(playSound:(NSString *)fileName
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 {
-  // Ses dosyasının bundle'daki yolunu bul
-  NSString *soundFilePath = [[NSBundle mainBundle] pathForResource:soundFileName ofType:nil];
-  NSURL *soundFileURL = [NSURL fileURLWithPath:soundFilePath];
-  
-  if (!soundFileURL) {
-    NSLog(@"Ses dosyası bulunamadı: %@", soundFileName);
-    return;
-  }
-  
-  NSError *error;
-  _audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundFileURL error:&error];
-  
-  if (error) {
-    NSLog(@"Ses çalma hatası: %@", error.localizedDescription);
-    return;
-  }
-  
-  [_audioPlayer setVolume:0.5]; // Orta ses seviyesi
-  [_audioPlayer play];
+    [self playSoundWithVolume:fileName volume:0.5 resolver:resolve rejecter:reject];
 }
 
-RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)soundFileName volume:(float)volume)
+// Ses çalma fonksiyonu (özel volume ile)
+RCT_EXPORT_METHOD(playSoundWithVolume:(NSString *)fileName
+                  volume:(float)volume
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 {
-  // Ses dosyasının bundle'daki yolunu bul
-  NSString *soundFilePath = [[NSBundle mainBundle] pathForResource:soundFileName ofType:nil];
-  NSURL *soundFileURL = [NSURL fileURLWithPath:soundFilePath];
-  
-  if (!soundFileURL) {
-    NSLog(@"Ses dosyası bulunamadı: %@", soundFileName);
-    return;
-  }
-  
-  NSError *error;
-  _audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundFileURL error:&error];
-  
-  if (error) {
-    NSLog(@"Ses çalma hatası: %@", error.localizedDescription);
-    return;
-  }
-  
-  [_audioPlayer setVolume:volume]; // Özel ses seviyesi
-  [_audioPlayer play];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSURL *soundURL = [[NSBundle mainBundle] URLForResource:fileName withExtension:nil];
+        
+        if (!soundURL) {
+            reject(@"FILE_NOT_FOUND", [NSString stringWithFormat:@"Sound file '%@' not found in bundle", fileName], nil);
+            return;
+        }
+        
+        NSError *error;
+        AVAudioPlayer *audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL error:&error];
+        
+        if (error) {
+            reject(@"PLAYBACK_ERROR", [NSString stringWithFormat:@"Error creating audio player: %@", error.localizedDescription], error);
+            return;
+        }
+        
+        audioPlayer.volume = volume;
+        audioPlayer.numberOfLoops = 0;
+        
+        BOOL success = [audioPlayer play];
+        
+        if (success) {
+            resolve(@{@"success": @YES, @"fileName": fileName, @"volume": @(volume)});
+        } else {
+            reject(@"PLAYBACK_ERROR", @"Failed to play sound", nil);
+        }
+    });
 }
 
 @end
