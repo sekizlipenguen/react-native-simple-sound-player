@@ -94,6 +94,11 @@ export function removeEventListener(subscription) {
   subscription.remove();
 }
 
+// Ses durdurma fonksiyonu
+export function stop() {
+  return SimpleSoundPlayer.stop ? SimpleSoundPlayer.stop() : Promise.resolve({success: false});
+}
+
 export default {
   playSound,
   playSoundWithVolume,
@@ -102,4 +107,5 @@ export default {
   play, // Options object ile kullanım
   addEventListener,
   removeEventListener,
+  stop,
 };

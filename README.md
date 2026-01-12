@@ -14,6 +14,7 @@
 - ✅ **Loop Support**: Infinite or fixed number of loops
 - ✅ **Event System**: Listen to playback completion and errors
 - ✅ **Options Pattern**: Clean API with options object
+- ✅ **Stop Control**: Stop playback at any time
 - ✅ **TypeScript Ready**: Full TypeScript support included
 - ✅ **Zero Dependencies**: No external libraries required
 - ✅ **Auto Linking**: Works out of the box with React Native 0.60+
@@ -67,6 +68,9 @@ SimpleSoundPlayer.playSoundWithVolumeAndCache('https://example.com/music.mp3', 0
 
 // 🔁 Loop Support - Infinite or fixed loops
 SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop('ambient.mp3', 0.5, 3600, -1); // -1 = infinite
+
+// 🛑 Stop Playback - Stop currently playing sound
+await SimpleSoundPlayer.stop();
 
 // 🎯 Options Pattern - Clean and flexible API
 SimpleSoundPlayer.play({
@@ -157,13 +161,16 @@ const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', (even
 SimpleSoundPlayer.removeEventListener(subscription);
 ```
 
-### Complete Example with Events
+### Complete Example with Events and Stop
 ```javascript
 import React, {useEffect} from 'react';
 import {Button, View, Alert} from 'react-native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import SimpleSoundPlayer from '@sekizlipenguen/react-native-simple-sound-player';
 
 const App = () => {
+  const navigation = useNavigation();
+
   useEffect(() => {
     // Global event listener
     const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', (event) => {
@@ -172,8 +179,20 @@ const App = () => {
 
     return () => {
       SimpleSoundPlayer.removeEventListener(subscription);
+      // Stop sound when component unmounts
+      SimpleSoundPlayer.stop();
     };
   }, []);
+
+  // Stop sound when screen loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        // Stop sound when navigating away
+        SimpleSoundPlayer.stop();
+      };
+    }, [])
+  );
 
   const handlePlayWithCallback = async () => {
     try {
@@ -208,11 +227,29 @@ const App = () => {
     }
   };
 
+  const handleStop = async () => {
+    try {
+      await SimpleSoundPlayer.stop();
+      Alert.alert('Success', 'Sound stopped');
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleGoBack = async () => {
+    await SimpleSoundPlayer.stop();
+    navigation.goBack();
+  };
+
   return (
     <View style={{flex: 1, justifyContent: 'center', padding: 20}}>
       <Button title="Play Notification" onPress={handlePlayWithCallback} />
       <View style={{height: 20}} />
       <Button title="Play Ambient (Infinite)" onPress={handlePlayAmbient} />
+      <View style={{height: 20}} />
+      <Button title="Stop Sound" onPress={handleStop} />
+      <View style={{height: 20}} />
+      <Button title="Go Back (Stop & Exit)" onPress={handleGoBack} />
     </View>
   );
 };
@@ -529,6 +566,30 @@ const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', handl
 SimpleSoundPlayer.removeEventListener(subscription);
 ```
 
+### `stop()`
+Stops the currently playing sound immediately.
+
+**Returns:** `Promise<{success: boolean}>`
+
+**Example:**
+```javascript
+// Stop currently playing sound
+await SimpleSoundPlayer.stop();
+
+// Stop before navigating away
+const handleGoBack = async () => {
+  await SimpleSoundPlayer.stop();
+  navigation.goBack();
+};
+
+// Stop when component unmounts
+useEffect(() => {
+  return () => {
+    SimpleSoundPlayer.stop();
+  };
+}, []);
+```
+
 ### Supported Sources
 - **Local files**: `notification.mp3`, `music.wav`, `sound.ogg`
 - **Remote URLs**: `https://example.com/sound.mp3`, `http://example.com/music.wav`
@@ -618,6 +679,7 @@ await SimpleSoundPlayer.play({
 | Caching | ✅ | ✅ | Automatic management |
 | Loop Support | ✅ | ✅ | Infinite, fixed, or once |
 | Event System | ✅ | ✅ | Complete and error events |
+| Stop Control | ✅ | ✅ | Stop playback anytime |
 | TypeScript | ✅ | ✅ | Full type definitions |
 
 ---

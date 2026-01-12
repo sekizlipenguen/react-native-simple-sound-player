@@ -25,5 +25,6 @@ export function playSoundWithVolume(fileName: string, volume: number): Promise<{
 export function playSoundWithVolumeAndCache(fileName: string, volume: number, cacheDurationSeconds: number): Promise<{success: boolean; fileName: string; volume: number}>;
 export function playSoundWithVolumeAndCacheAndLoop(fileName: string, volume: number, cacheDurationSeconds: number, loopCount: number): Promise<{success: boolean; fileName: string; volume: number}>;
 export function play(options: PlayOptions): Promise<{success: boolean; fileName: string; volume: number}>;
+export function stop(): Promise<{success: boolean}>;
 export function addEventListener(eventName: 'onSoundComplete' | 'onSoundError', handler: (event: SoundCompleteEvent | SoundErrorEvent) => void): {remove: () => void};
 export function removeEventListener(subscription: {remove: () => void}): void;

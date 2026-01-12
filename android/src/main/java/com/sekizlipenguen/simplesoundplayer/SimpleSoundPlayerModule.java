@@ -25,6 +25,7 @@ import java.security.NoSuchAlgorithmException;
 public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
     public static final String NAME = "SimpleSoundPlayer";
     private final ReactApplicationContext reactContext;
+    private MediaPlayer currentMediaPlayer; // Mevcut çalan MediaPlayer'ı sakla
 
     public SimpleSoundPlayerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -63,13 +64,44 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
         playSoundWithVolumeInternal(fileName, volume, cacheDurationSeconds, loopCount, promise);
     }
 
+    @ReactMethod
+    public void stop(Promise promise) {
+        try {
+            if (currentMediaPlayer != null) {
+                if (currentMediaPlayer.isPlaying()) {
+                    currentMediaPlayer.stop();
+                }
+                currentMediaPlayer.release();
+                currentMediaPlayer = null;
+            }
+            WritableMap result = Arguments.createMap();
+            result.putBoolean("success", true);
+            promise.resolve(result);
+        } catch (Exception e) {
+            promise.reject("STOP_ERROR", "Error stopping sound: " + e.getMessage(), e);
+        }
+    }
+
     private void playSoundWithVolumeInternal(String fileName, float volume, int cacheDurationSeconds, int loopCount, Promise promise) {
+        // Önceki MediaPlayer'ı durdur
+        if (currentMediaPlayer != null) {
+            try {
+                if (currentMediaPlayer.isPlaying()) {
+                    currentMediaPlayer.stop();
+                }
+                currentMediaPlayer.release();
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
         // Belirli sayıda loop için counter (inner class'ta kullanılacak)
         final int[] currentLoopCountRef = {0};
         final int maxLoopCount = loopCount;
-
+        
         try {
             MediaPlayer mediaPlayer = new MediaPlayer();
+            currentMediaPlayer = mediaPlayer; // Yeni MediaPlayer'ı sakla
             // Modern AudioAttributes kullan (deprecated API yerine)
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -145,6 +177,9 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
                             // Loop sayısı tamamlandı
                             sendEvent("onSoundComplete", Arguments.createMap());
                             mp.release();
+                            if (currentMediaPlayer == mp) {
+                                currentMediaPlayer = null;
+                            }
                         }
                     } else {
                         // Tek sefer (loopCount == 0) - tamamlandı eventi gönder
@@ -152,6 +187,9 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
                             sendEvent("onSoundComplete", Arguments.createMap());
                         }
                         mp.release();
+                        if (currentMediaPlayer == mp) {
+                            currentMediaPlayer = null;
+                        }
                     }
                 }
             });

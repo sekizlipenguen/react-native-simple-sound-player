@@ -193,6 +193,23 @@ RCT_EXPORT_METHOD(playSoundWithVolumeAndCacheAndLoop:(NSString *)fileName
     });
 }
 
+// Ses durdurma fonksiyonu
+RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (_currentPlayer && [_currentPlayer isPlaying]) {
+            [_currentPlayer stop];
+            _currentPlayer.delegate = nil;
+        }
+        _currentPlayer = nil;
+        
+        if (resolve) {
+            resolve(@{@"success": @YES});
+        }
+    });
+}
+
 // AVAudioPlayerDelegate methodları
 - (void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag {
     NSLog(@"Audio player finished playing: %@", flag ? @"Successfully" : @"With error");
