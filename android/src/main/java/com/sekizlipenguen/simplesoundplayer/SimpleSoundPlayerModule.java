@@ -68,10 +68,23 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
     public void stop(Promise promise) {
         try {
             if (currentMediaPlayer != null) {
-                if (currentMediaPlayer.isPlaying()) {
-                    currentMediaPlayer.stop();
+                try {
+                    if (currentMediaPlayer.isPlaying()) {
+                        currentMediaPlayer.stop();
+                    }
+                } catch (IllegalStateException e) {
+                    // Player zaten durmuş olabilir, devam et
                 }
-                currentMediaPlayer.release();
+                try {
+                    currentMediaPlayer.reset(); // Reset önce çağrılmalı
+                } catch (Exception e) {
+                    // Ignore
+                }
+                try {
+                    currentMediaPlayer.release();
+                } catch (Exception e) {
+                    // Ignore
+                }
                 currentMediaPlayer = null;
             }
             WritableMap result = Arguments.createMap();

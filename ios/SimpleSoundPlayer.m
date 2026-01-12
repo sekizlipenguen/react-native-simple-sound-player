@@ -3,10 +3,19 @@
 @implementation SimpleSoundPlayer
 {
     AVAudioPlayer *_currentPlayer;
+    NSMutableArray<AVAudioPlayer *> *_activePlayers; // Tüm aktif player'ları takip et
 }
 
 // React Native modülünün tanımlaması
 RCT_EXPORT_MODULE();
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _activePlayers = [NSMutableArray array];
+    }
+    return self;
+}
 
 // Event gönderilebilecek event isimlerini belirt
 - (NSArray<NSString *> *)supportedEvents {
@@ -113,9 +122,14 @@ RCT_EXPORT_METHOD(playSoundWithVolumeAndCacheAndLoop:(NSString *)fileName
 
         // Önceki player'ı temizle
         if (_currentPlayer) {
+            [_currentPlayer stop];
             _currentPlayer.delegate = nil;
+            [_activePlayers removeObject:_currentPlayer];
         }
         _currentPlayer = audioPlayer;
+        if (audioPlayer) {
+            [_activePlayers addObject:audioPlayer];
+        }
 
         // Volume'u 0.0-1.0 arasında sınırla (iOS için)
         float normalizedVolume = volume;
@@ -198,11 +212,28 @@ RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (_currentPlayer && [_currentPlayer isPlaying]) {
+        // Tüm aktif player'ları durdur
+        for (AVAudioPlayer *player in [_activePlayers copy]) {
+            if (player && [player isPlaying]) {
+                [player stop];
+                player.delegate = nil;
+            }
+        }
+        
+        // Array'i temizle
+        [_activePlayers removeAllObjects];
+        
+        // Current player'ı da temizle
+        if (_currentPlayer) {
             [_currentPlayer stop];
             _currentPlayer.delegate = nil;
         }
         _currentPlayer = nil;
+        
+        // AVAudioSession'ı da durdur (iOS için ekstra güvence)
+        NSError *error = nil;
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        [audioSession setActive:NO withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation error:&error];
         
         if (resolve) {
             resolve(@{@"success": @YES});
@@ -237,6 +268,7 @@ RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve
         if (_currentPlayer == player) {
             _currentPlayer = nil;
         }
+        [_activePlayers removeObject:player];
     }
 }
 
@@ -253,6 +285,7 @@ RCT_EXPORT_METHOD(stop:(RCTPromiseResolveBlock)resolve
     if (_currentPlayer == player) {
         _currentPlayer = nil;
     }
+    [_activePlayers removeObject:player];
 }
 
 // Cache fonksiyonları

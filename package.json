@@ -1,6 +1,6 @@
 {
   "name": "@sekizlipenguen/react-native-simple-sound-player",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "A simple React Native sound player for MP3 and other audio files without external dependencies",
   "main": "src/index.js",
   "types": "src/index.d.ts",
