@@ -11,6 +11,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.io.IOException;
 import java.io.File;
@@ -35,6 +36,13 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
         return NAME;
     }
 
+    // Event gönderme metodu
+    private void sendEvent(String eventName, WritableMap params) {
+        reactContext
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+            .emit(eventName, params);
+    }
+
     @ReactMethod
     public void playSound(String fileName, Promise promise) {
         playSoundWithVolume(fileName, 0.5f, promise);
@@ -42,15 +50,24 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void playSoundWithVolume(String fileName, float volume, Promise promise) {
-        playSoundWithVolumeInternal(fileName, volume, 3600, promise);
+        playSoundWithVolumeInternal(fileName, volume, 3600, false, promise);
     }
 
     @ReactMethod
     public void playSoundWithVolumeAndCache(String fileName, float volume, int cacheDurationSeconds, Promise promise) {
-        playSoundWithVolumeInternal(fileName, volume, cacheDurationSeconds, promise);
+        playSoundWithVolumeInternal(fileName, volume, cacheDurationSeconds, 0, promise);
     }
 
-    private void playSoundWithVolumeInternal(String fileName, float volume, int cacheDurationSeconds, Promise promise) {
+    @ReactMethod
+    public void playSoundWithVolumeAndCacheAndLoop(String fileName, float volume, int cacheDurationSeconds, int loopCount, Promise promise) {
+        playSoundWithVolumeInternal(fileName, volume, cacheDurationSeconds, loopCount, promise);
+    }
+
+    private void playSoundWithVolumeInternal(String fileName, float volume, int cacheDurationSeconds, int loopCount, Promise promise) {
+        // Belirli sayıda loop için counter (inner class'ta kullanılacak)
+        final int[] currentLoopCountRef = {0};
+        final int maxLoopCount = loopCount;
+
         try {
             MediaPlayer mediaPlayer = new MediaPlayer();
             // Modern AudioAttributes kullan (deprecated API yerine)
@@ -59,12 +76,12 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build();
             mediaPlayer.setAudioAttributes(audioAttributes);
-            
+
             // Check if fileName is a URL (starts with http:// or https://)
             if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
                 // Remote URL - check cache first
                 String cachedFilePath = getCachedFilePath(fileName, cacheDurationSeconds);
-                
+
                 if (cachedFilePath != null) {
                     // Use cached file
                     mediaPlayer.setDataSource(cachedFilePath);
@@ -94,25 +111,58 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
                     promise.reject("FILE_NOT_FOUND", "Sound file '" + fileName + "' not found in raw resources");
                     return;
                 }
-                
+
                 mediaPlayer.setDataSource(context.getResources().openRawResourceFd(resourceId));
                 Log.d("SimpleSoundPlayer", "Playing local audio file: " + fileName);
             }
-            
+
             mediaPlayer.setVolume(volume, volume);
+            // loopCount: -1 = sonsuz loop, 0 = tek sefer, >0 = belirtilen sayıda loop
+            if (loopCount == -1) {
+                mediaPlayer.setLooping(true); // Sonsuz loop
+            } else {
+                mediaPlayer.setLooping(false); // Tek sefer veya completion listener ile kontrol edilecek
+            }
             mediaPlayer.prepare();
             mediaPlayer.start();
 
             mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    mp.release();
+                    if (maxLoopCount > 0) {
+                        // Belirli sayıda loop için
+                        currentLoopCountRef[0]++;
+                        if (currentLoopCountRef[0] < maxLoopCount) {
+                            // Tekrar çal
+                            try {
+                                mp.seekTo(0);
+                                mp.start();
+                            } catch (Exception e) {
+                                sendEvent("onSoundError", Arguments.createMap());
+                                mp.release();
+                            }
+                        } else {
+                            // Loop sayısı tamamlandı
+                            sendEvent("onSoundComplete", Arguments.createMap());
+                            mp.release();
+                        }
+                    } else {
+                        // Tek sefer (loopCount == 0) - tamamlandı eventi gönder
+                        if (!mp.isLooping()) {
+                            sendEvent("onSoundComplete", Arguments.createMap());
+                        }
+                        mp.release();
+                    }
                 }
             });
 
             mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
                 @Override
                 public boolean onError(MediaPlayer mp, int what, int extra) {
+                    WritableMap errorMap = Arguments.createMap();
+                    errorMap.putString("error", "Error playing sound: " + what + ", " + extra);
+                    errorMap.putInt("code", what);
+                    sendEvent("onSoundError", errorMap);
                     mp.release();
                     promise.reject("PLAYBACK_ERROR", "Error playing sound: " + what + ", " + extra);
                     return true;
@@ -138,11 +188,11 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
             String cacheKey = getCacheKey(url);
             File cacheDir = getCacheDirectory();
             File cachedFile = new File(cacheDir, cacheKey + ".mp3");
-            
+
             if (cachedFile.exists()) {
                 long fileAge = System.currentTimeMillis() - cachedFile.lastModified();
                 long cacheDurationMs = cacheDurationSeconds * 1000L;
-                
+
                 if (fileAge < cacheDurationMs) {
                     // Cache is still valid
                     return cachedFile.getAbsolutePath();
@@ -155,7 +205,7 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             Log.e("SimpleSoundPlayer", "Error checking cache: " + e.getMessage());
         }
-        
+
         return null;
     }
 
@@ -164,34 +214,34 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
             String cacheKey = getCacheKey(url);
             File cacheDir = getCacheDirectory();
             File cachedFile = new File(cacheDir, cacheKey + ".mp3");
-            
+
             // Create cache directory if it doesn't exist
             if (!cacheDir.exists()) {
                 cacheDir.mkdirs();
             }
-            
+
             // Download file
             URL downloadUrl = new URL(url);
             HttpURLConnection connection = (HttpURLConnection) downloadUrl.openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(30000);
-            
+
             InputStream inputStream = connection.getInputStream();
             FileOutputStream outputStream = new FileOutputStream(cachedFile);
-            
+
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
             }
-            
+
             inputStream.close();
             outputStream.close();
             connection.disconnect();
-            
+
             Log.d("SimpleSoundPlayer", "File cached: " + cachedFile.getAbsolutePath());
             return cachedFile.getAbsolutePath();
-            
+
         } catch (Exception e) {
             Log.e("SimpleSoundPlayer", "Error downloading file: " + e.getMessage());
             return null;

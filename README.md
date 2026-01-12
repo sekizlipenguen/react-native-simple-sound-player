@@ -11,6 +11,9 @@
 - ✅ **Local & Remote Audio**: Play both local files and HTTPS URLs
 - ✅ **Smart Caching**: Automatic cache management for remote files
 - ✅ **Volume Control**: Precise volume adjustment (0.0 - 1.0)
+- ✅ **Loop Support**: Infinite or fixed number of loops
+- ✅ **Event System**: Listen to playback completion and errors
+- ✅ **Options Pattern**: Clean API with options object
 - ✅ **TypeScript Ready**: Full TypeScript support included
 - ✅ **Zero Dependencies**: No external libraries required
 - ✅ **Auto Linking**: Works out of the box with React Native 0.60+
@@ -61,6 +64,18 @@ SimpleSoundPlayer.playSound('https://example.com/sound.mp3');
 
 // 💾 Smart Caching - Automatic optimization
 SimpleSoundPlayer.playSoundWithVolumeAndCache('https://example.com/music.mp3', 0.5, 3600);
+
+// 🔁 Loop Support - Infinite or fixed loops
+SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop('ambient.mp3', 0.5, 3600, -1); // -1 = infinite
+
+// 🎯 Options Pattern - Clean and flexible API
+SimpleSoundPlayer.play({
+  fileName: 'notification.mp3',
+  volume: 0.8,
+  loopCount: 3, // Play 3 times
+  onComplete: () => console.log('Done!'),
+  onError: (error) => console.error('Error:', error)
+});
 ```
 
 > 🎯 **No complex setup, no configuration files, no learning curve!** Just import and play.
@@ -99,6 +114,110 @@ await SimpleSoundPlayer.playSoundWithVolumeAndCache(url, 0.5, 3600);
 
 // 1 day cache
 await SimpleSoundPlayer.playSoundWithVolumeAndCache(url, 0.5, 86400);
+```
+
+### Loop Examples
+```javascript
+// Infinite loop (ambient background music)
+await SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop('ambient.mp3', 0.5, 3600, -1);
+
+// Play once (default behavior)
+await SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop('notification.mp3', 0.8, 3600, 0);
+
+// Play 3 times
+await SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop('alarm.mp3', 1.0, 3600, 3);
+
+// Using options pattern
+await SimpleSoundPlayer.play({
+  fileName: 'background.mp3',
+  volume: 0.3,
+  loopCount: -1, // -1 = infinite, 0 = once, >0 = number of times
+});
+```
+
+### Event System Examples
+```javascript
+// Using callbacks in options object
+await SimpleSoundPlayer.play({
+  fileName: 'notification.mp3',
+  onComplete: (event) => {
+    console.log('Sound completed:', event);
+  },
+  onError: (event) => {
+    console.error('Error occurred:', event);
+  }
+});
+
+// Using global event listeners
+const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', (event) => {
+  console.log('Any sound completed:', event);
+});
+
+// Remove listener when done
+SimpleSoundPlayer.removeEventListener(subscription);
+```
+
+### Complete Example with Events
+```javascript
+import React, {useEffect} from 'react';
+import {Button, View, Alert} from 'react-native';
+import SimpleSoundPlayer from '@sekizlipenguen/react-native-simple-sound-player';
+
+const App = () => {
+  useEffect(() => {
+    // Global event listener
+    const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', (event) => {
+      console.log('Sound completed:', event);
+    });
+
+    return () => {
+      SimpleSoundPlayer.removeEventListener(subscription);
+    };
+  }, []);
+
+  const handlePlayWithCallback = async () => {
+    try {
+      await SimpleSoundPlayer.play({
+        fileName: 'notification.mp3',
+        volume: 0.8,
+        loopCount: 0, // Play once
+        onComplete: () => {
+          Alert.alert('Success', 'Sound played successfully!');
+        },
+        onError: (error) => {
+          Alert.alert('Error', error.error || 'Unknown error');
+        }
+      });
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handlePlayAmbient = async () => {
+    try {
+      await SimpleSoundPlayer.play({
+        fileName: 'ambient.mp3',
+        volume: 0.3,
+        loopCount: -1, // Infinite loop
+        onError: (error) => {
+          Alert.alert('Error', error.error || 'Unknown error');
+        }
+      });
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  return (
+    <View style={{flex: 1, justifyContent: 'center', padding: 20}}>
+      <Button title="Play Notification" onPress={handlePlayWithCallback} />
+      <View style={{height: 20}} />
+      <Button title="Play Ambient (Infinite)" onPress={handlePlayAmbient} />
+    </View>
+  );
+};
+
+export default App;
 ```
 
 ### Complete Example
@@ -289,6 +408,127 @@ const result = await SimpleSoundPlayer.playSoundWithVolumeAndCache(
 // {success: true, fileName: 'https://example.com/music.mp3', volume: 0.5}
 ```
 
+### `playSoundWithVolumeAndCacheAndLoop(fileName, volume, cacheDurationSeconds, loopCount)`
+Plays a sound file with custom volume, caching, and loop support.
+
+**Parameters:**
+- `fileName` (string): Name of the sound file or URL
+- `volume` (number): Volume level (0.0 - 1.0)
+- `cacheDurationSeconds` (number): Cache duration in seconds (e.g., 3600 for 1 hour)
+- `loopCount` (number):
+    - `-1`: Infinite loop
+    - `0`: Play once (default)
+    - `>0`: Play the specified number of times (e.g., `3` plays 3 times)
+
+**Returns:** `Promise<{success: boolean, fileName: string, volume: number}>`
+
+**Example:**
+```javascript
+// Infinite loop
+const result = await SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop(
+  'ambient.mp3', 
+  0.5, 
+  3600,
+  -1
+);
+
+// Play 3 times
+const result = await SimpleSoundPlayer.playSoundWithVolumeAndCacheAndLoop(
+  'alarm.mp3', 
+  1.0, 
+  3600,
+  3
+);
+```
+
+### `play(options)` ⭐ Recommended
+Plays a sound file using an options object. This is the recommended way to use the library as it provides a clean and flexible API.
+
+**Parameters:**
+- `options` (object):
+    - `fileName` (string, required): Name of the sound file or URL
+    - `volume` (number, optional): Volume level (0.0 - 1.0), default: `0.5`
+    - `cacheDurationSeconds` (number, optional): Cache duration in seconds, default: `3600`
+    - `loopCount` (number, optional):
+        - `-1`: Infinite loop
+        - `0`: Play once (default)
+        - `>0`: Play the specified number of times
+    - `onComplete` (function, optional): Callback when sound completes
+        - Receives `event: {success: boolean}`
+    - `onError` (function, optional): Callback when an error occurs
+        - Receives `event: {error: string, code?: number}`
+
+**Returns:** `Promise<{success: boolean, fileName: string, volume: number}>`
+
+**Example:**
+```javascript
+// Simple usage
+await SimpleSoundPlayer.play({
+  fileName: 'notification.mp3'
+});
+
+// With all options
+await SimpleSoundPlayer.play({
+  fileName: 'ambient.mp3',
+  volume: 0.3,
+  cacheDurationSeconds: 7200,
+  loopCount: -1, // Infinite loop
+  onComplete: (event) => {
+    console.log('Sound completed!', event);
+  },
+  onError: (event) => {
+    console.error('Error:', event.error);
+  }
+});
+
+// Play notification 3 times
+await SimpleSoundPlayer.play({
+  fileName: 'notification.mp3',
+  volume: 0.8,
+  loopCount: 3,
+  onComplete: () => {
+    Alert.alert('Done', 'Notification played 3 times');
+  }
+});
+```
+
+### `addEventListener(eventName, handler)`
+Adds a global event listener for sound events.
+
+**Parameters:**
+- `eventName` (string): Event name (`'onSoundComplete'` or `'onSoundError'`)
+- `handler` (function): Event handler function
+    - For `onSoundComplete`: receives `event: {success: boolean}`
+    - For `onSoundError`: receives `event: {error: string, code?: number}`
+
+**Returns:** `{remove: () => void}` - Subscription object with `remove()` method
+
+**Example:**
+```javascript
+const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', (event) => {
+  console.log('Sound completed:', event);
+  // {success: true}
+});
+
+// Later, remove the listener
+subscription.remove();
+// or
+SimpleSoundPlayer.removeEventListener(subscription);
+```
+
+### `removeEventListener(subscription)`
+Removes an event listener subscription.
+
+**Parameters:**
+- `subscription` (object): The subscription object returned by `addEventListener`
+
+**Example:**
+```javascript
+const subscription = SimpleSoundPlayer.addEventListener('onSoundComplete', handler);
+// ... later
+SimpleSoundPlayer.removeEventListener(subscription);
+```
+
 ### Supported Sources
 - **Local files**: `notification.mp3`, `music.wav`, `sound.ogg`
 - **Remote URLs**: `https://example.com/sound.mp3`, `http://example.com/music.wav`
@@ -296,6 +536,7 @@ const result = await SimpleSoundPlayer.playSoundWithVolumeAndCache(
 
 ### Error Handling
 ```javascript
+// Using try-catch
 try {
   const result = await SimpleSoundPlayer.playSound('nonexistent.mp3');
 } catch (error) {
@@ -305,6 +546,50 @@ try {
   // - "Failed to download audio from URL: ..."
   // - "Error creating audio player: ..."
 }
+
+// Using onError callback (recommended)
+await SimpleSoundPlayer.play({
+  fileName: 'sound.mp3',
+  onError: (event) => {
+    console.error('Error:', event.error);
+    console.error('Error code:', event.code);
+  }
+});
+
+// Using event listener
+const subscription = SimpleSoundPlayer.addEventListener('onSoundError', (event) => {
+  console.error('Error occurred:', event.error);
+});
+```
+
+### Loop Behavior
+```javascript
+// Infinite loop (-1): onComplete event is NOT fired (plays forever)
+await SimpleSoundPlayer.play({
+  fileName: 'ambient.mp3',
+  loopCount: -1,
+  onComplete: () => {
+    // This will never be called for infinite loops
+  }
+});
+
+// Play once (0): onComplete event fires when finished
+await SimpleSoundPlayer.play({
+  fileName: 'notification.mp3',
+  loopCount: 0,
+  onComplete: () => {
+    // This will be called when sound finishes
+  }
+});
+
+// Fixed loops (>0): onComplete fires after all loops complete
+await SimpleSoundPlayer.play({
+  fileName: 'alarm.mp3',
+  loopCount: 3,
+  onComplete: () => {
+    // This will be called after 3 plays complete
+  }
+});
 ```
 
 ---
@@ -331,6 +616,8 @@ try {
 | Remote URLs | ✅ | ✅ | HTTP/HTTPS support |
 | Volume Control | ✅ | ✅ | 0.0 - 1.0 range |
 | Caching | ✅ | ✅ | Automatic management |
+| Loop Support | ✅ | ✅ | Infinite, fixed, or once |
+| Event System | ✅ | ✅ | Complete and error events |
 | TypeScript | ✅ | ✅ | Full type definitions |
 
 ---

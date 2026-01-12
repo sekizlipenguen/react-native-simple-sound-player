@@ -1,5 +1,6 @@
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 #import <AVFoundation/AVFoundation.h>
 
-@interface SimpleSoundPlayer : NSObject <RCTBridgeModule, AVAudioPlayerDelegate>
+@interface SimpleSoundPlayer : RCTEventEmitter <RCTBridgeModule, AVAudioPlayerDelegate>
 @end
