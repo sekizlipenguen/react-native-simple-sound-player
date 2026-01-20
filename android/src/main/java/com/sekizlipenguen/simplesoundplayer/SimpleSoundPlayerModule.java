@@ -51,7 +51,7 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void playSoundWithVolume(String fileName, float volume, Promise promise) {
-        playSoundWithVolumeInternal(fileName, volume, 3600, false, promise);
+        playSoundWithVolumeInternal(fileName, volume, 3600, 0, promise);
     }
 
     @ReactMethod
@@ -111,7 +111,7 @@ public class SimpleSoundPlayerModule extends ReactContextBaseJavaModule {
         // Belirli sayıda loop için counter (inner class'ta kullanılacak)
         final int[] currentLoopCountRef = {0};
         final int maxLoopCount = loopCount;
-        
+
         try {
             MediaPlayer mediaPlayer = new MediaPlayer();
             currentMediaPlayer = mediaPlayer; // Yeni MediaPlayer'ı sakla
